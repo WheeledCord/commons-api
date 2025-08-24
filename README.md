@@ -57,22 +57,22 @@ go run . /path/to/custom.db
 - `POST /api/halls/create` create new hall
 - `POST /api/halls/join` join hall with invite code
 
-### Rooms
+### rooms
 
 - `GET /api/rooms/{hall_id}` - get rooms in a hall
 - `POST /api/rooms/create` - create new room in hall
 
-### Messages
+### messages
 
 - `GET /api/messages/{room_id}` - get recent messages (limit with `?limit=N`)
 
-### Ws
+### WS
 
 - `GET /ws?token={session_token}` - establish ws connection
 
-## Auth
+## auth
 
-all protected endpoints require a bearer token in the auth header:
+all protected endpoints need a bearer token in the auth header:
 
 ```
 Authorization: Bearer {session_token}
