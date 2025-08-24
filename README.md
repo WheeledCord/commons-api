@@ -1,107 +1,81 @@
-# Simple Chat App Backend
+# commons-api
 
-A robust, minimalist chat application backend built in Go with SQLite. Supports multiple clients via JSON over HTTP and WebSockets.
+A minimalistic chat application backend built in Go with SQLite. Supports multiple clients via JSON over HTTP and WebSockets.
 
-## Features
+## features
 
-- User registration and authentication (bcrypt)
-- Create "halls" (servers) with invite codes
-- Multiple "rooms" (channels) per hall
-- Real-time messaging via WebSockets
-- Presence tracking with heartbeat pings
+- user registration and authentication (bcrypt)
+- create halls with invite codes
+- Multiple rooms per hall
+- realtime messaging via ws
+- presence tracking with heartbeat pings
 - SQLite database for persistence
-- **Default Hall**: All new users automatically join "HKCLB" hall with #general and #summer-of-making channels
 
-## Setup
+## setup
 
-### Prerequisites
+### stuff you need
 
 - Go 1.21 or later
 - SQLite3
 
-### Installation
+### installation
 
-1. Clone/download the source files
-2. Install dependencies:
+1. download the source files
+2. install dependencies:
 
 ```bash
 go mod tidy
 ```
 
-3. Run the server:
+3. run the server:
 
 ```bash
 go run .
 ```
 
-The server will start on `http://localhost:8080` with WebSocket endpoint at `ws://localhost:8080/ws`.
+the server will start on `http://localhost:8080` with ws endpoint at `ws://localhost:8080/ws`.
 
-### Database
+### database
 
-The SQLite database (`chat.db`) is created automatically in the current directory. To use a custom path:
+the SQLite database (`chat.db`) is created automatically in the current directory. to use a custom path:
 
 ```bash
 go run . /path/to/custom.db
 ```
 
-## API Endpoints
+## endpoints
 
-### Authentication
+### auth
 
-- `POST /api/register` - Create new user account
-- `POST /api/login` - Authenticate user and get session token
-- `POST /api/logout` - Invalidate session token
+- `POST /api/register` creates new user account
+- `POST /api/login` authenticates user and gets session token
+- `POST /api/logout` invalidates session token
 
-### Halls (Servers)
+### halls
 
-- `GET /api/halls` - Get user's halls
-- `POST /api/halls/create` - Create new hall
-- `POST /api/halls/join` - Join hall with invite code
+- `GET /api/halls` get user's halls
+- `POST /api/halls/create` create new hall
+- `POST /api/halls/join` join hall with invite code
 
-### Rooms (Channels)
+### Rooms
 
-- `GET /api/rooms/{hall_id}` - Get rooms in a hall
-- `POST /api/rooms/create` - Create new room in hall
+- `GET /api/rooms/{hall_id}` - get rooms in a hall
+- `POST /api/rooms/create` - create new room in hall
 
 ### Messages
 
-- `GET /api/messages/{room_id}` - Get recent messages (limit with `?limit=N`)
+- `GET /api/messages/{room_id}` - get recent messages (limit with `?limit=N`)
 
-### WebSocket
+### Ws
 
-- `GET /ws?token={session_token}` - Establish WebSocket connection
+- `GET /ws?token={session_token}` - establish ws connection
 
-## Authentication
+## Auth
 
-All protected endpoints require a Bearer token in the Authorization header:
+all protected endpoints require a bearer token in the auth header:
 
 ```
 Authorization: Bearer {session_token}
 ```
 
-WebSocket connections authenticate via query parameter: `?token={session_token}`
-
-## Production Considerations
-
-- Change CORS settings in production
-- Add rate limiting
-- Use HTTPS/WSS in production
-- Consider using a more robust session store
-- Add logging configuration
-- Monitor database performance
-
-## Architecture
-
-```
-┌─────────────┐    ┌──────────────┐    ┌─────────────┐
-│   Client    │────│  HTTP/WS     │────│  Database   │
-│ (Web/CLI)   │    │  Handlers    │    │  (SQLite)   │
-└─────────────┘    └──────────────┘    └─────────────┘
-                          │
-                   ┌──────────────┐
-                   │  WebSocket   │
-                   │  Manager     │
-                   └──────────────┘
-```
-
-The backend is completely frontend-agnostic and communicates only via JSON over HTTP and WebSockets.
+websocket connections authenticate via query parameter: `?token={session_token}`
