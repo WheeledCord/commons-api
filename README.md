@@ -1,12 +1,12 @@
 # commons-api
 
-A minimalistic chat application backend built in Go with SQLite. Supports multiple clients via JSON over HTTP and WebSockets.
+A minimalistic chat application backend built in Go with SQLite. Supports multiple clients via json over http and websockets.
 
 ## features
 
 - user registration and authentication (bcrypt)
 - create halls with invite codes
-- Multiple rooms per hall
+- multiple rooms per hall
 - realtime messaging via ws
 - presence tracking with heartbeat pings
 - SQLite database for persistence
@@ -15,7 +15,7 @@ A minimalistic chat application backend built in Go with SQLite. Supports multip
 
 ### stuff you need
 
-- Go 1.21 or later
+- go 1.21 or later
 - SQLite3
 
 ### installation
