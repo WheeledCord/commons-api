@@ -4,9 +4,51 @@ import (
 	"encoding/json"
 	"log"
 	"net/http"
+	"path/filepath"
+	"regexp"
 	"strconv"
 	"strings"
 )
+
+// cleanRoomName processes room name according to rules
+func cleanRoomName(name string) string {
+	// Add # prefix if not present
+	if !strings.HasPrefix(name, "#") {
+		name = "#" + name
+	}
+	
+	// Convert to lowercase
+	name = strings.ToLower(name)
+	
+	// Replace spaces with dashes
+	name = strings.ReplaceAll(name, " ", "-")
+	
+	// Remove invalid symbols (!@#$%^&*()_=) but keep # at start and allow dashes
+	reg := regexp.MustCompile(`[!@$%^&*()_=]+`)
+	name = reg.ReplaceAllString(name, "")
+	
+	// Handle double dashes - replace with single dash
+	for strings.Contains(name, "--") {
+		name = strings.ReplaceAll(name, "--", "-")
+	}
+	
+	// Remove trailing dashes
+	name = strings.TrimRight(name, "-")
+	
+	// Limit to 20 characters
+	if len(name) > 20 {
+		name = name[:20]
+		// Remove trailing dash if cut created one
+		name = strings.TrimRight(name, "-")
+	}
+	
+	// Must have at least # plus one character
+	if len(name) <= 1 {
+		return ""
+	}
+	
+	return name
+}
 
 type Server struct {
 	db        *Database
@@ -25,8 +67,15 @@ func NewServer(db *Database) *Server {
 	}
 }
 
+
+
 func (s *Server) RegisterRoutes() *http.ServeMux {
 	mux := http.NewServeMux()
+
+	// Serve static files from ../commons-webui/
+	webUIDir := filepath.Join("..", "commons-webui")
+	fs := http.FileServer(http.Dir(webUIDir))
+	mux.Handle("/", fs)
 
 	// Auth endpoints
 	mux.HandleFunc("/api/register", s.handleRegister)
@@ -36,6 +85,7 @@ func (s *Server) RegisterRoutes() *http.ServeMux {
 	// Hall management
 	mux.HandleFunc("/api/halls/create", s.auth.RequireAuth(s.handleCreateHall))
 	mux.HandleFunc("/api/halls/join", s.auth.RequireAuth(s.handleJoinHall))
+	mux.HandleFunc("/api/halls/leave", s.auth.RequireAuth(s.handleLeaveHall))
 	mux.HandleFunc("/api/halls/give-admin", s.auth.RequireAuth(s.handleGiveAdmin))
 	mux.HandleFunc("/api/halls", s.auth.RequireAuth(s.handleHalls))
 	mux.HandleFunc("/api/halls/", s.auth.RequireAuth(s.handleHallWithID))
@@ -202,8 +252,8 @@ func (s *Server) handleCreateHall(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Create default "general" room
-	_, err = s.db.CreateRoom(hall.ID, "general")
+	// Create default "#general" room
+	_, err = s.db.CreateRoom(hall.ID, "#general")
 	if err != nil {
 		respondError(w, "Failed to create default room", http.StatusInternalServerError)
 		return
@@ -254,6 +304,43 @@ func (s *Server) handleJoinHall(w http.ResponseWriter, r *http.Request) {
 
 	respondJSON(w, map[string]interface{}{
 		"hall": hall,
+	})
+}
+
+func (s *Server) handleLeaveHall(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	session := sessionFromContext(r.Context())
+	if session == nil {
+		respondError(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
+
+	var req struct {
+		HallID int `json:"hall_id"`
+	}
+
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		respondError(w, "Invalid JSON", http.StatusBadRequest)
+		return
+	}
+
+	if req.HallID == 0 {
+		respondError(w, "Hall ID required", http.StatusBadRequest)
+		return
+	}
+
+	err := s.db.LeaveHall(session.UserID, req.HallID)
+	if err != nil {
+		respondError(w, "Failed to leave hall", http.StatusBadRequest)
+		return
+	}
+
+	respondJSON(w, map[string]interface{}{
+		"success": true,
 	})
 }
 
@@ -394,6 +481,13 @@ func (s *Server) handleCreateRoom(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Clean and validate room name
+	cleanName := cleanRoomName(req.Name)
+	if cleanName == "" {
+		respondError(w, "Invalid room name", http.StatusBadRequest)
+		return
+	}
+
 	// Check if user is member of hall
 	isMember, err := s.db.IsUserInHall(session.UserID, req.HallID)
 	if err != nil || !isMember {
@@ -401,7 +495,7 @@ func (s *Server) handleCreateRoom(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	room, err := s.db.CreateRoom(req.HallID, req.Name)
+	room, err := s.db.CreateRoom(req.HallID, cleanName)
 	if err != nil {
 		if strings.Contains(err.Error(), "UNIQUE constraint failed") {
 			respondError(w, "Room name already exists in this hall", http.StatusConflict)
@@ -457,7 +551,14 @@ func (s *Server) handleMessages(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	messages, err := s.db.GetRoomMessages(roomID, limit)
+	offset := 0
+	if offsetStr := r.URL.Query().Get("offset"); offsetStr != "" {
+		if parsedOffset, err := strconv.Atoi(offsetStr); err == nil && parsedOffset >= 0 {
+			offset = parsedOffset
+		}
+	}
+
+	messages, err := s.db.GetRoomMessages(roomID, limit, offset)
 	if err != nil {
 		respondError(w, "Failed to fetch messages", http.StatusInternalServerError)
 		return

@@ -1,0 +1,15 @@
+*
+
+!**/
+
+!**/*.go
+!go.mod
+!go.sum
+
+!README.md
+!LICENSE*
+
+!schema.sql
+!migrations/**
+!sql/**
+!.gitignore

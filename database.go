@@ -233,6 +233,14 @@ func (d *Database) JoinHall(userID int, inviteCode string) error {
 	return err
 }
 
+func (d *Database) LeaveHall(userID int, hallID int) error {
+	_, err := d.db.Exec(
+		"DELETE FROM hall_members WHERE hall_id = ? AND user_id = ?",
+		hallID, userID,
+	)
+	return err
+}
+
 func (d *Database) GetUserHalls(userID int) ([]Hall, error) {
 	rows, err := d.db.Query(`
 		SELECT h.id, h.name, h.invite_code, h.owner_id, h.created_at 
@@ -351,15 +359,15 @@ func (d *Database) GetMessageByID(messageID int) (*Message, error) {
 	return message, nil
 }
 
-func (d *Database) GetRoomMessages(roomID int, limit int) ([]Message, error) {
+func (d *Database) GetRoomMessages(roomID int, limit int, offset int) ([]Message, error) {
 	rows, err := d.db.Query(`
 		SELECT m.id, m.room_id, m.user_id, u.username, m.content, m.created_at 
 		FROM messages m 
 		JOIN users u ON m.user_id = u.id 
 		WHERE m.room_id = ? 
 		ORDER BY m.created_at DESC 
-		LIMIT ?
-	`, roomID, limit)
+		LIMIT ? OFFSET ?
+	`, roomID, limit, offset)
 	if err != nil {
 		return nil, err
 	}

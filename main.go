@@ -37,6 +37,7 @@ func main() {
 	handler := corsMiddleware(mux)
 
 	log.Println("Chat server starting on :8080")
+	log.Println("Web UI: http://localhost:8080")
 	log.Println("WebSocket endpoint: ws://localhost:8080/ws")
 	log.Println("API endpoints: http://localhost:8080/api/*")
 
